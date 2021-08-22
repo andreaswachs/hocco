@@ -17,6 +17,7 @@ data Flags =
           , filename :: String
           , isFilenameSet :: Bool
           , isNeedleSet :: Bool
+          , validFlags :: Bool
           } deriving Show
 
 -- ###################################################################
@@ -27,7 +28,7 @@ processArgs :: [String] -> Flags
 processArgs args = 
     processArgsPrivate
         args 
-        (Flags {filename="", needle="", isFilenameSet=False, isNeedleSet=False})
+        (Flags {filename="", needle="", isFilenameSet=False, isNeedleSet=False, validFlags = False})
 
 processArgsPrivate :: [String] -> Flags -> Flags
 processArgsPrivate [] flags = flags
@@ -47,9 +48,9 @@ parseRequiredSetting :: String -> [String] -> Flags -> Flags
 parseRequiredSetting x xs flags =
     if isFilenameSet flags then
         if isNeedleSet flags then
-            processArgsPrivate xs flags
+            processArgsPrivate xs (flags {validFlags = True})
         else 
-            processArgsPrivate xs (flags {needle = x, isNeedleSet = True})
+            processArgsPrivate xs (flags {needle = x, isNeedleSet = True, validFlags = True})
     else
         processArgsPrivate xs (flags {filename = x, isFilenameSet = True})
 
@@ -58,13 +59,14 @@ parseRequiredSetting x xs flags =
 -- ###################################################################
 
 isValidConfig :: Flags -> Bool
-isValidConfig flags =
-    isFilenameSet flags && isNeedleSet flags
+isValidConfig = validFlags
 
 giveArgsError flags =
     if isFilenameSet flags then
-      if isNeedleSet flags then
-          putStrLn "An unknown error has occurred before the program ran. The programmer doesn't know what advice to give."
+      if isNeedleSet flags then do
+          putStrLn "Everything should be fine, but the program determined that an error occurred.. This is strange"
+          print flags
+          print "\n"
         else 
           putStrLn "The needle (string to look for) was not set. This is the second argument to the program."
       else
