@@ -13,46 +13,33 @@ runProgram :: [String] -> IO ()
 runProgram args = do
   let flags = Args.processArgs args
   if Args.isValidConfig flags
-    then countOccurances $ Args.getFilenameAndNeedle flags
+    then do
+      count <- countOccurances $ Args.getFilenameAndNeedle flags
+      printf "Count: %d\n" count
     else Args.giveArgsError flags
 
--- ###################################################################
--- # Here comes the function to start the occurance count
--- ###################################################################
-
-countOccurances :: (String, String) -> IO ()
+countOccurances :: (String, String) -> IO Integer
 countOccurances (filename, needle) = do
   fileExists <- doesFileExist filename
   if fileExists then do
     instreamHandle <- openFile filename ReadMode
-    countOccurancesHandler (filename, needle, 0) instreamHandle
-  else
-    putStrLn "The file does not exists"
-  
--- ###################################################################
--- # Here comes the function to keep the counting going 
--- ###################################################################
+    handleCountOccurances (filename, needle, 0) instreamHandle
+  else do
+    putStrLn "Error: file not found."
+    return 0
 
-countOccurancesHandler :: (String, String, Integer) -> Handle -> IO ()
-countOccurancesHandler args@(filename, needle, count) instreamHandle = do
-  inEOF <- hIsEOF instreamHandle
-  if inEOF then printf "Found %d occurances of the string \"%s\" in the file \"%s\"\n" count needle filename
-  else do 
+handleCountOccurances :: (String, String, Integer) -> Handle -> IO Integer
+handleCountOccurances args@(filename, needle, count) instreamHandle = do
+  reachedEOF <- hIsEOF instreamHandle
+  if reachedEOF then return count
+  else do
     lineStr <- hGetLine instreamHandle
-    handleLine args instreamHandle lineStr
-  return ()
+    handleLineRead args instreamHandle lineStr
 
--- ###################################################################
--- # here comes the function to handle each line of input
--- ###################################################################
-
-handleLine :: (String, String, Integer) -> Handle -> String -> IO ()
-handleLine args@(filename, needle, count) instreamHandle line = do
-  countOccurancesHandler (filename, needle, shiftyOccuranceCounter needle line count) instreamHandle
-
--- ###################################################################
--- # Here comes the - shifty - function for counting occurances of a substring
--- ###################################################################
+handleLineRead :: (String, String, Integer) -> Handle -> String -> IO Integer
+handleLineRead args@(filename, needle, count) instreamHandle line =
+  let newCount = shiftyOccuranceCounter needle line count
+  in handleCountOccurances (filename, needle, newCount) instreamHandle
 
 shiftyOccuranceCounter :: String -> String -> Integer -> Integer
 shiftyOccuranceCounter needle [] count = count
